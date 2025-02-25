@@ -148,7 +148,11 @@ class Inspect:
                 field = trans_func(**column.translate())
                 fields.append("    " + field)
             tables.append(model + "\n".join(fields))
+<<<<<<< HEAD
         result = "\n".join(imports) + "\n\n"
+=======
+            tables.append("    class Meta:\n        table = '" + table + "'\n\n")
+>>>>>>> b51b4ea ([UP] inspectdb/__init__ class Inspect {~ def inspect +119 "class Meta ..." })
         return result + "\n\n\n".join(tables)
 
     async def get_columns(self, table: str) -> list[Column]:
