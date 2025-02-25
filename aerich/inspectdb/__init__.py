@@ -228,3 +228,8 @@ class Inspect:
     @classmethod
     def binary_field(cls, **kwargs) -> str:
         return cls.get_field_string("BinaryField", **kwargs)
+
+    @classmethod
+    def charenum_field(cls, **kwargs) -> str:
+        arguments = "{enum_type}{null}"
+        return cls.get_field_string("CharEnumField", arguments, **kwargs)
