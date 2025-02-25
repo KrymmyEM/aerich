@@ -43,6 +43,61 @@ class InspectPostgres(Inspect):
         ret = await self.conn.execute_query_dict(sql, [self.database, self.schema])
         return list(map(lambda x: x["table_name"], ret))
 
+    async def _get_enums(self):
+        sql = """WITH enum_types AS (
+    SELECT n.nspname AS schema_name,
+           t.typname AS type_name,
+           t.typtype AS type_category
+    FROM pg_type t
+    JOIN pg_namespace n ON n.oid = t.typnamespace
+    WHERE t.typtype = 'e'
+      AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+)
+SELECT ct.type_name,
+       CASE 
+           WHEN ct.type_category = 'e' THEN array_to_string(array_agg(e.enumlabel ORDER BY e.enumsortorder), ';') -- ENUM значения с разделителем ;
+           ELSE NULL
+       END AS type_values
+FROM enum_types ct
+LEFT JOIN pg_enum e ON ct.type_category = 'e' AND e.enumtypid = (SELECT oid FROM pg_type WHERE typname = ct.type_name)
+WHERE ct.schema_name = $2
+  AND current_database() = $1  -- Параметр для проверки базы данных
+GROUP BY ct.schema_name, ct.type_name, ct.type_category
+ORDER BY ct.schema_name, ct.type_name;
+"""     
+        ret = await self.conn.execute_query_dict(sql, [self.database, self.schema])
+        return ret
+
+    async def get_enums_data_types(self) -> dict[str, EnumDataType]:
+        enums = {}
+        enum_names = set()
+        ret = await self._get_enums()
+        for row in ret:
+            name = row.get("type_name")
+            category = row.get("type_category")
+            if not name or not category:
+                continue
+            type_values = row.get("type_values")
+            if name in enums:
+                continue
+            enums[name] = (EnumDataType(
+                    row_name=name,
+                    row_values=type_values
+                )
+            )
+        
+        return enums
+
+    async def get_enums_names(self) -> set[str]:
+        enum_names = set()
+        ret = await self._get_enums()
+        for row in ret:
+            name = row.get("type_name")
+            if not name:
+                continue
+            enum_names.add(name)
+        return enum_names
+
     async def get_columns(self, table: str) -> list[Column]:
         columns = []
         sql = f"""select c.column_name,
