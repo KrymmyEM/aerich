@@ -35,8 +35,8 @@ class InspectSQLite(Inspect):
             "NATIVE CHARACTER": self.char_field,
             "NVARCHAR": self.char_field,
             "CLOB": self.text_field,
-            "NUMERIC": self.float_field,
-            "DECIMAL": self.float_field,
+            "NUMERIC": self.decimal_field,
+            "DECIMAL": self.decimal_field,
             "BOOLEAN": self.bool_field,
         }
 
