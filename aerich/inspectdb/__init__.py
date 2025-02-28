@@ -242,7 +242,15 @@ class Inspect:
         is_normal_field: bool = True,
         **kwargs,
     ) -> str:
-        name = kwargs["name"]
+        name: str = kwargs["name"]
+        arguments +="{source_field}"
+        kwargs["source_field"] = f"source_field='{name}'"
+        if "-" in name:
+            name = name.replace("-", "_")
+        if name[0].isdigit():
+            name = "_" + name
+        name = name.replace("@", "")
+        
         field_params = arguments.format(**kwargs).strip().rstrip(",")
         if is_normal_field:
             field_class = "fields." + field_class
