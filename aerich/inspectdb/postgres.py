@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
-from aerich.inspectdb import Column, FieldMapDict, Inspect
+from aerich.inspectdb import Column, FieldMapDict, Inspect, EnumDataType
 
 if TYPE_CHECKING:
     from tortoise.backends.base_postgres.client import BasePostgresClient
