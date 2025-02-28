@@ -58,7 +58,7 @@ class EnumDataType(BaseModel):
             class_name = class_name.replace("@", "")
             class_name = class_name.title()
             class_name = class_name.replace(" ", "")
-            self.class_name = class_name
+            self.class_name = class_name+"Enum"
         return self.class_name
 
     def enum_type(self) -> dict:
