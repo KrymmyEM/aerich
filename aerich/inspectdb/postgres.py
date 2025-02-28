@@ -96,8 +96,7 @@ ORDER BY ct.schema_name, ct.type_name;
         ret = await self._get_enums()
         for row in ret:
             name = row.get("type_name")
-            category = row.get("type_category")
-            if not name or not category:
+            if not name:
                 continue
             type_values = row.get("type_values")
             if name in enums:
@@ -109,6 +108,7 @@ ORDER BY ct.schema_name, ct.type_name;
             )
         
         return enums
+
 
     async def get_enums_names(self) -> set[str]:
         enum_names = set()
@@ -152,8 +152,9 @@ where c.table_catalog = $1
                     max_digits=row["numeric_precision"],
                     decimal_places=row["numeric_scale"],
                     comment=row["column_comment"],
-                    pk=row["column_key"] == "PRIMARY KEY",
-                    unique=False,  # can't get this simply
+                    pk=row["column_key"] == "PRIMARY KEY" or (row["column_key"] == "UNIQUE" and row["column_name"] == "id"),
+                    extra=None,
+                    unique=row["column_key"] == "UNIQUE" and row["column_name"] != "id",  # can't get this simply
                     index=False,  # can't get this simply
                 )
             )
