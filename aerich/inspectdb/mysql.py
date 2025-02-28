@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from aerich.inspectdb import Column, FieldMapDict, Inspect
+from aerich.inspectdb import Column, FieldMapDict, Inspect, EnumDataType
 
 
 class InspectMySQL(Inspect):
@@ -23,7 +23,68 @@ class InspectMySQL(Inspect):
             "decimal": self.decimal_field,
             "json": self.json_field,
             "longblob": self.binary_field,
+            "enum": self.charenum_field,
         }
+
+    async def _get_enums(self):
+        sql = """SELECT c.TABLE_NAME,
+	   c.COLUMN_NAME, 
+       REPLACE(
+           REPLACE(
+               SUBSTRING_INDEX(SUBSTRING_INDEX(c.COLUMN_TYPE, '(', -1), ')', 1),
+               "','", "';'"
+           ),
+           "'", ""
+       ) AS ENUM_VALUES
+FROM information_schema.COLUMNS c
+LEFT JOIN information_schema.STATISTICS s 
+    ON c.TABLE_NAME = s.TABLE_NAME
+    AND c.TABLE_SCHEMA = s.TABLE_SCHEMA
+    AND c.COLUMN_NAME = s.COLUMN_NAME
+WHERE c.TABLE_SCHEMA = %s
+  AND c.DATA_TYPE = 'enum';
+"""     
+        ret = await self.conn.execute_query_dict(sql, [self.database])
+        return ret
+    
+
+    async def get_enums_data_types(self) -> dict[str, EnumDataType]:
+        enums = {}
+        ret = await self._get_enums()
+        for row in ret:
+            table_name = row.get("TABLE_NAME")
+            column_name = row.get("COLUMN_NAME")
+
+            if not table_name or not column_name:
+                continue
+
+            name = f"{table_name}_{column_name}"
+            type_values = row.get("ENUM_VALUES")
+            if name in enums:
+                continue
+            enums[name] = (EnumDataType(
+                    row_name=name,
+                    row_values=type_values
+                )
+            )
+        
+        return enums
+
+
+    async def get_enums_names(self) -> set[str]:
+        enum_names = set()
+        ret = await self._get_enums()
+        for row in ret:
+            table_name = row.get("TABLE_NAME")
+            column_name = row.get("COLUMN_NAME")
+
+            if not table_name or not column_name:
+                continue
+
+            name = f"{table_name}_{column_name}"
+            enum_names.add(name)
+        return enum_names
+
 
     async def get_all_tables(self) -> list[str]:
         sql = "select TABLE_NAME from information_schema.TABLES where TABLE_SCHEMA=%s"
