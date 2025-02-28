@@ -109,7 +109,6 @@ ORDER BY ct.schema_name, ct.type_name;
         
         return enums
 
-
     async def get_enums_names(self) -> set[str]:
         enum_names = set()
         ret = await self._get_enums()
