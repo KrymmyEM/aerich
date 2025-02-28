@@ -63,7 +63,7 @@ class EnumDataType(BaseModel):
 
     def enum_type(self) -> dict:
         return {"enum_type": f"enum_type={self.get_class_name()}, "}
-        
+
 
 @dataclass
 class Column:
@@ -163,13 +163,29 @@ class Inspect:
     async def inspect(self) -> str:
         if not self.tables:
             self.tables = await self.get_all_tables()
+<<<<<<< HEAD
         imports = ["from tortoise import Model, fields"]
+=======
+        result = "from tortoise import Model, fields\n\n\n"
+        
+        enums_types = {}
+        if getattr(self, "get_enums_data_types", False):
+            enums_types = await self.get_enums_data_types()
+
+        if enums_types:
+            result += "from enum import Enum\n\n"
+        enums = []
+        for key, value in enums_types.items():
+            enums.append(value.get_enum_class() )
+
+>>>>>>> 1ec012b ([UP] inspectdb/__init__ class Inspect {~ def inspect })
         tables = []
         for table in self.tables:
             columns = await self.get_columns(table)
             fields = []
             model = self._table_template.format(table=table.title().replace("_", ""))
             for column in columns:
+<<<<<<< HEAD
                 try:
                     trans_func = self.field_map[column.data_type]
                 except KeyError as e:
@@ -188,14 +204,30 @@ class Inspect:
                         self.get_field_string, field_class, is_normal_field=is_normal_field
                     )
                 field = trans_func(**column.translate())
+=======
+                if column.data_type in enums_types:
+                        field = self.field_map["enum"](**enums_types[column.data_type].enum_type(), **column.translate())
+                elif f"{table}_{column.name}" in enums_types:
+                    field = self.field_map["enum"](**enums_types[f"{table}_{column.name}"].enum_type(), **column.translate())
+                else:
+                    field = self.field_map[column.data_type](**column.translate())
+                   
+>>>>>>> 1ec012b ([UP] inspectdb/__init__ class Inspect {~ def inspect })
                 fields.append("    " + field)
             tables.append(model + "\n".join(fields))
 <<<<<<< HEAD
         result = "\n".join(imports) + "\n\n"
 =======
             tables.append("    class Meta:\n        table = '" + table + "'\n\n")
+<<<<<<< HEAD
 >>>>>>> b51b4ea ([UP] inspectdb/__init__ class Inspect {~ def inspect +119 "class Meta ..." })
         return result + "\n\n\n".join(tables)
+=======
+        
+        enums.extend(tables)
+        
+        return result + "\n\n\n".join(enums)
+>>>>>>> 1ec012b ([UP] inspectdb/__init__ class Inspect {~ def inspect })
 
     async def get_columns(self, table: str) -> list[Column]:
         raise NotImplementedError
