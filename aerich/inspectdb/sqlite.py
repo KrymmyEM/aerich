@@ -7,18 +7,37 @@ class InspectSQLite(Inspect):
     @property
     def field_map(self) -> FieldMapDict:
         return {
+            "INT": self.int_field,
             "INTEGER": self.int_field,
-            "INT": self.bool_field,
+            "INTEGER UNSIGNED": self.int_field,
             "SMALLINT": self.smallint_field,
+            "SMALLINT UNSIGNED": self.smallint_field,
+            "BIGINT": self.bigint_field,        
+            "UNSIGNED BIG INT": self.bigint_field,
+            "INT2": self.smallint_field,
+            "INT8": self.bigint_field,
+            "TINYINT": self.smallint_field,
             "VARCHAR": self.char_field,
             "TEXT": self.text_field,
             "TIMESTAMP": self.datetime_field,
             "REAL": self.float_field,
             "BIGINT": self.bigint_field,
             "DATE": self.date_field,
+            "BOOL": self.bool_field,
+            "DATETIME": self.datetime_field,
             "TIME": self.time_field,
             "JSON": self.json_field,
             "BLOB": self.binary_field,
+            "CHARACTER": self.char_field,
+            "VARCHAR": self.char_field,
+            "VARYING CHARACTER": self.char_field,
+            "NCHAR": self.char_field,
+            "NATIVE CHARACTER": self.char_field,
+            "NVARCHAR": self.char_field,
+            "CLOB": self.text_field,
+            "NUMERIC": self.float_field,
+            "DECIMAL": self.float_field,
+            "BOOLEAN": self.bool_field,
         }
 
     async def get_columns(self, table: str) -> list[Column]:
@@ -34,7 +53,7 @@ class InspectSQLite(Inspect):
             columns.append(
                 Column(
                     name=row["name"],
-                    data_type=row["type"].split("(")[0],
+                    data_type=row["type"].split("(")[0].upper(),
                     null=row["notnull"] == 0,
                     default=row["dflt_value"],
                     length=length,
