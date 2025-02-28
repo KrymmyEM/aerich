@@ -22,6 +22,7 @@ class ColumnInfoDict(TypedDict):
 
 FieldMapDict = dict[str, Callable[..., str]]
 
+
 class EnumDataType(BaseModel):
     row_name: str
     row_values: str
@@ -30,13 +31,7 @@ class EnumDataType(BaseModel):
 
 
     def get_enum_class(self) -> str:
-        if not self.class_name:
-            class_name = self.row_name
-            class_name = class_name.replace("_", " ")
-            class_name = class_name.replace("@", "")
-            class_name = class_name.title()
-            class_name = class_name.replace(" ", "")
-            self.class_name = class_name + "Enum"
+        self.class_name = self.get_class_name()
         if len(self.class_values) != len(self.row_values.split(";")):
             self.row_values = self.row_values.strip("{")
             self.row_values = self.row_values.strip("}")
@@ -55,6 +50,20 @@ class EnumDataType(BaseModel):
         result += "\n".join(self.class_values)
         
         return result
+    
+    def get_class_name(self) -> str:
+        if not self.class_name:
+            class_name = self.row_name
+            class_name = class_name.replace("_", " ")
+            class_name = class_name.replace("@", "")
+            class_name = class_name.title()
+            class_name = class_name.replace(" ", "")
+            self.class_name = class_name
+        return self.class_name
+
+    def enum_type(self) -> dict:
+        return {"enum_type": f"enum_type={self.get_class_name()}, "}
+        
 
 @dataclass
 class Column:
