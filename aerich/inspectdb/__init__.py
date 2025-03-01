@@ -187,6 +187,7 @@ class Inspect:
             result.append("from enum import Enum")
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> 1ec012b ([UP] inspectdb/__init__ class Inspect {~ def inspect })
 =======
         # Генерация enum-классов
@@ -194,6 +195,10 @@ class Inspect:
 
         # Генерация моделей
 >>>>>>> 86aa176 ([FIX] Inspectdb follow to code style)
+=======
+        enums = [value.get_enum_class() for value in enums_types.values()]
+
+>>>>>>> 7929567 ([FIX]inspectdb/__init__ -163;165|)
         tables = []
         for table in self.tables:
             columns = await self.get_columns(table)
