@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
-from aerich.inspectdb import Column, FieldMapDict, Inspect, EnumDataType
+from aerich.inspectdb import Column, EnumDataType, FieldMapDict, Inspect
 
 if TYPE_CHECKING:
     from tortoise.backends.base_postgres.client import BasePostgresClient
@@ -86,13 +86,12 @@ WHERE ct.schema_name = $2
   AND current_database() = $1  -- Параметр для проверки базы данных
 GROUP BY ct.schema_name, ct.type_name, ct.type_category
 ORDER BY ct.schema_name, ct.type_name;
-"""     
+"""
         ret = await self.conn.execute_query_dict(sql, [self.database, self.schema])
         return ret
 
     async def get_enums_data_types(self) -> dict[str, EnumDataType]:
         enums = {}
-        enum_names = set()
         ret = await self._get_enums()
         for row in ret:
             name = row.get("type_name")
@@ -101,12 +100,8 @@ ORDER BY ct.schema_name, ct.type_name;
             type_values = row.get("type_values")
             if name in enums:
                 continue
-            enums[name] = (EnumDataType(
-                    row_name=name,
-                    row_values=type_values
-                )
-            )
-        
+            enums[name] = EnumDataType(row_name=name, row_values=type_values)
+
         return enums
 
     async def get_enums_names(self) -> set[str]:
@@ -151,9 +146,11 @@ where c.table_catalog = $1
                     max_digits=row["numeric_precision"],
                     decimal_places=row["numeric_scale"],
                     comment=row["column_comment"],
-                    pk=row["column_key"] == "PRIMARY KEY" or (row["column_key"] == "UNIQUE" and row["column_name"] == "id"),
+                    pk=row["column_key"] == "PRIMARY KEY"
+                    or (row["column_key"] == "UNIQUE" and row["column_name"] == "id"),
                     extra=None,
-                    unique=row["column_key"] == "UNIQUE" and row["column_name"] != "id",  # can't get this simply
+                    unique=row["column_key"] == "UNIQUE"
+                    and row["column_name"] != "id",  # can't get this simply
                     index=False,  # can't get this simply
                 )
             )

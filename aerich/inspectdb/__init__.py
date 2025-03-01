@@ -29,7 +29,6 @@ class EnumDataType(BaseModel):
     class_name: str | None = None
     class_values: list[str] = []
 
-
     def get_enum_class(self) -> str:
         self.class_name = self.get_class_name()
         if len(self.class_values) != len(self.row_values.split(";")):
@@ -39,18 +38,18 @@ class EnumDataType(BaseModel):
             for value in row_values:
                 if value.isdigit():
                     continue
-                name_value = value.strip("\"")
+                name_value = value.strip('"')
                 name_value = name_value.replace(" ", "_")
                 name_value = name_value.replace(",", "_")
                 name_value = name_value.replace("-", "_")
                 name_value = name_value.replace("@", "")
                 self.class_values.append(f'    {name_value.upper()} = "{value}"')
-        
+
         result = f"class {self.class_name}(str, Enum):\n"
         result += "\n".join(self.class_values)
-        
+
         return result
-    
+
     def get_class_name(self) -> str:
         if not self.class_name:
             class_name = self.row_name
@@ -58,7 +57,7 @@ class EnumDataType(BaseModel):
             class_name = class_name.replace("@", "")
             class_name = class_name.title()
             class_name = class_name.replace(" ", "")
-            self.class_name = class_name+"Enum"
+            self.class_name = class_name + "Enum"
         return self.class_name
 
     def enum_type(self) -> dict:
@@ -160,9 +159,16 @@ class Inspect:
     def field_map(self) -> FieldMapDict:
         raise NotImplementedError
 
+    def get_field(self, table: str, column, enums_types: dict[str, EnumDataType]) -> str:
+        enum_key = enums_types.get(column.data_type) or enums_types.get(f"{table}_{column.name}")
+        if enum_key:
+            return self.field_map["enum"](**enum_key.enum_type(), **column.translate())
+        return self.field_map[column.data_type](**column.translate())
+
     async def inspect(self) -> str:
         if not self.tables:
             self.tables = await self.get_all_tables()
+<<<<<<< HEAD
 <<<<<<< HEAD
         imports = ["from tortoise import Model, fields"]
 =======
@@ -171,19 +177,30 @@ class Inspect:
         enums_types = {}
         if getattr(self, "get_enums_data_types", False):
             enums_types = await self.get_enums_data_types()
+=======
+
+        result = ["from tortoise import Model, fields"]
+        enums_types: dict[str, EnumDataType] = await self.get_enums_data_types()
+>>>>>>> 86aa176 ([FIX] Inspectdb follow to code style)
 
         if enums_types:
-            result += "from enum import Enum\n\n"
-        enums = []
-        for key, value in enums_types.items():
-            enums.append(value.get_enum_class() )
+            result.append("from enum import Enum")
 
+<<<<<<< HEAD
 >>>>>>> 1ec012b ([UP] inspectdb/__init__ class Inspect {~ def inspect })
+=======
+        # Генерация enum-классов
+        enums = [value.get_enum_class() for value in enums_types.values()]
+
+        # Генерация моделей
+>>>>>>> 86aa176 ([FIX] Inspectdb follow to code style)
         tables = []
         for table in self.tables:
             columns = await self.get_columns(table)
-            fields = []
+            fields = [f"    {self.get_field(table, column, enums_types)}" for column in columns]
+
             model = self._table_template.format(table=table.title().replace("_", ""))
+<<<<<<< HEAD
             for column in columns:
 <<<<<<< HEAD
                 try:
@@ -228,6 +245,23 @@ class Inspect:
         
         return result + "\n\n\n".join(enums)
 >>>>>>> 1ec012b ([UP] inspectdb/__init__ class Inspect {~ def inspect })
+=======
+            meta = f"    class Meta:\n        table = '{table}'\n"
+
+            tables.append(f"{model}\n{'\n'.join(fields)}\n\n{meta}\n")
+
+        result.extend(enums + tables)
+        return "\n\n\n".join(result)
+
+    async def _get_enums(self):
+        raise NotImplementedError
+
+    async def get_enums_data_types(self) -> dict[str, EnumDataType]:
+        raise NotImplementedError
+
+    async def get_enums_names(self) -> set[str]:
+        raise NotImplementedError
+>>>>>>> 86aa176 ([FIX] Inspectdb follow to code style)
 
     async def get_columns(self, table: str) -> list[Column]:
         raise NotImplementedError
@@ -243,14 +277,14 @@ class Inspect:
         **kwargs,
     ) -> str:
         name: str = kwargs["name"]
-        arguments +="{source_field}"
+        arguments += "{source_field}"
         kwargs["source_field"] = f"source_field='{name}'"
         if "-" in name:
             name = name.replace("-", "_")
         if name[0].isdigit():
             name = "_" + name
         name = name.replace("@", "")
-        
+
         field_params = arguments.format(**kwargs).strip().rstrip(",")
         if is_normal_field:
             field_class = "fields." + field_class

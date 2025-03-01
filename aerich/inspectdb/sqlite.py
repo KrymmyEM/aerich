@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from aerich.inspectdb import Column, FieldMapDict, Inspect
+from aerich.inspectdb import Column, EnumDataType, FieldMapDict, Inspect
 
 
 class InspectSQLite(Inspect):
@@ -12,7 +12,7 @@ class InspectSQLite(Inspect):
             "INTEGER UNSIGNED": self.int_field,
             "SMALLINT": self.smallint_field,
             "SMALLINT UNSIGNED": self.smallint_field,
-            "BIGINT": self.bigint_field,        
+            "BIGINT": self.bigint_field,
             "UNSIGNED BIG INT": self.bigint_field,
             "INT2": self.smallint_field,
             "INT8": self.bigint_field,
@@ -21,7 +21,6 @@ class InspectSQLite(Inspect):
             "TEXT": self.text_field,
             "TIMESTAMP": self.datetime_field,
             "REAL": self.float_field,
-            "BIGINT": self.bigint_field,
             "DATE": self.date_field,
             "BOOL": self.bool_field,
             "DATETIME": self.datetime_field,
@@ -29,7 +28,6 @@ class InspectSQLite(Inspect):
             "JSON": self.json_field,
             "BLOB": self.binary_field,
             "CHARACTER": self.char_field,
-            "VARCHAR": self.char_field,
             "VARYING CHARACTER": self.char_field,
             "NCHAR": self.char_field,
             "NATIVE CHARACTER": self.char_field,
@@ -39,6 +37,15 @@ class InspectSQLite(Inspect):
             "DECIMAL": self.decimal_field,
             "BOOLEAN": self.bool_field,
         }
+
+    async def _get_enums(self):
+        return []
+
+    async def get_enums_data_types(self) -> dict[str, EnumDataType]:
+        return {}
+
+    async def get_enums_names(self) -> set[str]:
+        return set()
 
     async def get_columns(self, table: str) -> list[Column]:
         columns = []

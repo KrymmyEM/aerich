@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from aerich.inspectdb import Column, FieldMapDict, Inspect, EnumDataType
+from aerich.inspectdb import Column, EnumDataType, FieldMapDict, Inspect
 
 
 class InspectMySQL(Inspect):
@@ -43,10 +43,9 @@ LEFT JOIN information_schema.STATISTICS s
     AND c.COLUMN_NAME = s.COLUMN_NAME
 WHERE c.TABLE_SCHEMA = %s
   AND c.DATA_TYPE = 'enum';
-"""     
+"""
         ret = await self.conn.execute_query_dict(sql, [self.database])
         return ret
-    
 
     async def get_enums_data_types(self) -> dict[str, EnumDataType]:
         enums = {}
@@ -62,14 +61,9 @@ WHERE c.TABLE_SCHEMA = %s
             type_values = row.get("ENUM_VALUES")
             if name in enums:
                 continue
-            enums[name] = (EnumDataType(
-                    row_name=name,
-                    row_values=type_values
-                )
-            )
-        
-        return enums
+            enums[name] = EnumDataType(row_name=name, row_values=type_values)
 
+        return enums
 
     async def get_enums_names(self) -> set[str]:
         enum_names = set()
@@ -84,7 +78,6 @@ WHERE c.TABLE_SCHEMA = %s
             name = f"{table_name}_{column_name}"
             enum_names.add(name)
         return enum_names
-
 
     async def get_all_tables(self) -> list[str]:
         sql = "select TABLE_NAME from information_schema.TABLES where TABLE_SCHEMA=%s"
