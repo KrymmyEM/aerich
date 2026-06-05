@@ -16,49 +16,40 @@ class InspectPostgres(Inspect):
 
     @property
     def field_map(self) -> FieldMapDict:
-        return {
-            "int2": self.smallint_field,
-            "_int2": self.smallint_field,
-            "int4": self.int_field,
-            "_int4": self.int_field,
-            "int8": self.int_field,
-            "_int8": self.int_field,
-            "smallint": self.smallint_field,
-            "_smallint": self.smallint_field,
-            "varchar": self.char_field,
-            "_varchar": self.char_field,
-            "text": self.text_field,
-            "_text": self.text_field,
-            "bigint": self.bigint_field,
-            "_bigint": self.bigint_field,
-            "timestamptz": self.datetime_field,
-            "_timestamptz": self.datetime_field,
-            "float4": self.float_field,
-            "_float4": self.float_field,
-            "float8": self.float_field,
-            "_float8": self.float_field,
-            "date": self.date_field,
-            "_date": self.date_field,
-            "time": self.time_field,
-            "_time": self.time_field,
-            "timetz": self.time_field,
-            "_timetz": self.time_field,
-            "decimal": self.decimal_field,
-            "_decimal": self.decimal_field,
-            "numeric": self.decimal_field,
-            "_numeric": self.decimal_field,
-            "uuid": self.uuid_field,
-            "_uuid": self.uuid_field,
-            "jsonb": self.json_field,
-            "_jsonb": self.json_field,
-            "bytea": self.binary_field,
-            "_bytea": self.binary_field,
-            "bool": self.bool_field,
-            "_bool": self.bool_field,
-            "timestamp": self.datetime_field,
-            "_timestamp": self.datetime_field,
-            "enum": self.charenum_field,
-        }
+        self._full_field_map = getattr(self, "_full_field_map", None)
+        if not self._full_field_map:
+            local_map = {
+                "int2": self.smallint_field,
+                "int4": self.int_field,
+                "int8": self.int_field,
+                "smallint": self.smallint_field,
+                "varchar": self.char_field,
+                "text": self.text_field,
+                "bigint": self.bigint_field,
+                "timestamptz": self.datetime_field,
+                "float4": self.float_field,
+                "float8": self.float_field,
+                "date": self.date_field,
+                "time": self.time_field,
+                "timetz": self.time_field,
+                "decimal": self.decimal_field,
+                "numeric": self.decimal_field,
+                "uuid": self.uuid_field,
+                "jsonb": self.json_field,
+                "bytea": self.binary_field,
+                "bool": self.bool_field,
+                "timestamp": self.datetime_field,
+                "enum": self.charenum_field,
+            }
+
+            local_map.update({
+                f"_{key}": value
+                for key, value in local_map.items()
+            })
+
+            self._full_field_map = local_map
+
+        return self._full_field_map
 
     async def get_all_tables(self) -> list[str]:
         sql = "select TABLE_NAME from information_schema.TABLES where table_catalog=$1 and table_schema=$2"

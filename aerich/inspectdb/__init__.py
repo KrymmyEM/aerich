@@ -38,12 +38,8 @@ class EnumDataType(BaseModel):
             for value in row_values:
                 if value.isdigit():
                     continue
-                name_value = value.strip('"')
-                name_value = name_value.replace(" ", "_")
-                name_value = name_value.replace(",", "_")
-                name_value = name_value.replace("-", "_")
-                name_value = name_value.replace("@", "")
-                self.class_values.append(f'    {name_value.upper()} = "{value}"')
+                name_value = re.sub(r"[\s,-]+", "_", value.strip('"')).replace("@", "").upper()
+                self.class_values.append(f'    {name_value} = "{value}"')
 
         result = f"class {self.class_name}(str, Enum):\n"
         result += "\n".join(self.class_values)
@@ -52,11 +48,7 @@ class EnumDataType(BaseModel):
 
     def get_class_name(self) -> str:
         if not self.class_name:
-            class_name = self.row_name
-            class_name = class_name.replace("_", " ")
-            class_name = class_name.replace("@", "")
-            class_name = class_name.title()
-            class_name = class_name.replace(" ", "")
+            class_name = self.row_name.replace("@", "").replace("_", " ").title().replace(" ", "")
             self.class_name = class_name + "Enum"
         return self.class_name
 
