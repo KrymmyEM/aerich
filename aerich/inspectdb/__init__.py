@@ -1,13 +1,10 @@
 from __future__ import annotations
 
 import contextlib
-from dataclasses import dataclass
-from functools import partial
 from typing import Any, Callable, TypedDict
 
+from pydantic import BaseModel
 from tortoise import BaseDBAsyncClient
-
-from aerich.exceptions import NotSupportError
 
 
 class ColumnInfoDict(TypedDict):
@@ -56,45 +53,19 @@ class EnumDataType(BaseModel):
         return {"enum_type": f"enum_type={self.get_class_name()}, "}
 
 
-@dataclass
-class Column:
+class Column(BaseModel):
     name: str
     data_type: str
     null: bool
     default: Any
+    comment: str | None = None
     pk: bool
     unique: bool
     index: bool
-    comment: str | None = None
     length: int | None = None
     extra: str | None = None
     decimal_places: int | None = None
     max_digits: int | None = None
-
-    @staticmethod
-    def trans_default(value: str, data_type: str, extra: str | None) -> str:
-        if data_type in ("tinyint", "INT"):
-            default = f"default={'True' if value == '1' else 'False'}, "
-        elif data_type == "bool":
-            default = f"default={'True' if value == 'true' else 'False'}, "
-        elif data_type in ("datetime", "timestamptz", "TIMESTAMP"):
-            if value == "CURRENT_TIMESTAMP":
-                if extra == "DEFAULT_GENERATED on update CURRENT_TIMESTAMP":
-                    default = "auto_now=True, "
-                else:
-                    default = "auto_now_add=True, "
-            else:
-                default = ""
-        else:
-            if "::" in value:
-                default = f"default={value.split('::')[0]}, "
-            elif value.endswith("()"):
-                default = ""
-            elif value == "":
-                default = 'default="", '
-            else:
-                default = f"default={value}, "
-        return default
 
     def translate(self) -> ColumnInfoDict:
         comment = default = length = index = null = pk = ""
@@ -105,8 +76,6 @@ class Column:
                 index = "unique=True, "
             elif self.index:
                 index = "db_index=True, "
-            if self.default is not None:
-                default = self.trans_default(self.default, self.data_type, self.extra)
         if self.data_type in ("varchar", "VARCHAR"):
             length = f"max_length={self.length}, "
         elif self.data_type in ("decimal", "numeric"):
@@ -119,6 +88,27 @@ class Column:
                 length = ", ".join(length_parts) + ", "
         if self.null:
             null = "null=True, "
+        if self.default is not None and not self.pk:
+            if self.data_type in ("tinyint", "INT"):
+                default = f"default={'True' if self.default == '1' else 'False'}, "
+            elif self.data_type == "bool":
+                default = f"default={'True' if self.default == 'true' else 'False'}, "
+            elif self.data_type in ("datetime", "timestamptz", "TIMESTAMP"):
+                if self.default == "CURRENT_TIMESTAMP":
+                    if self.extra == "DEFAULT_GENERATED on update CURRENT_TIMESTAMP":
+                        default = "auto_now=True, "
+                    else:
+                        default = "auto_now_add=True, "
+            else:
+                if "::" in self.default:
+                    default = f"default={self.default.split('::')[0]}, "
+                elif self.default.endswith("()"):
+                    default = ""
+                elif self.default == "":
+                    default = 'default=""'
+                else:
+                    default = f"default={self.default}, "
+
         if self.comment:
             comment = f"description='{self.comment}', "
         return {
@@ -135,17 +125,11 @@ class Column:
 class Inspect:
     _table_template = "class {table}(Model):\n"
 
-    def __init__(
-        self,
-        conn: BaseDBAsyncClient,
-        tables: list[str] | None = None,
-        special_fields: dict[str, str] | None = None,
-    ) -> None:
+    def __init__(self, conn: BaseDBAsyncClient, tables: list[str] | None = None) -> None:
         self.conn = conn
         with contextlib.suppress(AttributeError):
             self.database = conn.database  # type:ignore[attr-defined]
         self.tables = tables
-        self._special_fields = special_fields
 
     @property
     def field_map(self) -> FieldMapDict:
@@ -160,95 +144,71 @@ class Inspect:
     async def inspect(self) -> str:
         if not self.tables:
             self.tables = await self.get_all_tables()
-<<<<<<< HEAD
-<<<<<<< HEAD
-        imports = ["from tortoise import Model, fields"]
-=======
-        result = "from tortoise import Model, fields\n\n\n"
-        
-        enums_types = {}
-        if getattr(self, "get_enums_data_types", False):
-            enums_types = await self.get_enums_data_types()
-=======
 
-        result = ["from tortoise import Model, fields"]
+        imports: list[str] = ["from tortoise import Model, fields"]
+        result_parts: list[str] = []
+
         enums_types: dict[str, EnumDataType] = await self.get_enums_data_types()
->>>>>>> 86aa176 ([FIX] Inspectdb follow to code style)
+        enums: list[str] = []
 
         if enums_types:
-            result.append("from enum import Enum")
+            imports.append("from enum import Enum")
+            enums = [value.get_enum_class() for value in enums_types.values()]
 
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> 1ec012b ([UP] inspectdb/__init__ class Inspect {~ def inspect })
-=======
-        # Генерация enum-классов
-        enums = [value.get_enum_class() for value in enums_types.values()]
-
-        # Генерация моделей
->>>>>>> 86aa176 ([FIX] Inspectdb follow to code style)
-=======
-        enums = [value.get_enum_class() for value in enums_types.values()]
-
->>>>>>> 7929567 ([FIX]inspectdb/__init__ -163;165|)
-        tables = []
         for table in self.tables:
             columns = await self.get_columns(table)
-            fields = [f"    {self.get_field(table, column, enums_types)}" for column in columns]
 
-            model = self._table_template.format(table=table.title().replace("_", ""))
-<<<<<<< HEAD
+            fields_lines: list[str] = []
+
             for column in columns:
-<<<<<<< HEAD
                 try:
                     trans_func = self.field_map[column.data_type]
+
                 except KeyError as e:
                     if not self._special_fields or column.data_type not in self._special_fields:
                         raise NotSupportError(
                             f"Can't translate {column.data_type=} to be tortoise field"
                         ) from e
+
                     field_class = self._special_fields[column.data_type]
                     is_normal_field = True
-                    if "." in field_class:  # e.g.: tortoise.contrib.mysql.fields.GeometryField
+
+                    if "." in field_class:
                         module, field_class = field_class.rsplit(".", 1)
+
                         if module != "fields":
                             imports.append(f"from {module} import {field_class}")
                             is_normal_field = False
+
                     trans_func = partial(
-                        self.get_field_string, field_class, is_normal_field=is_normal_field
+                        self.get_field_string,
+                        field_class,
+                        is_normal_field=is_normal_field,
                     )
-                field = trans_func(**column.translate())
-=======
-                if column.data_type in enums_types:
-                        field = self.field_map["enum"](**enums_types[column.data_type].enum_type(), **column.translate())
-                elif f"{table}_{column.name}" in enums_types:
-                    field = self.field_map["enum"](**enums_types[f"{table}_{column.name}"].enum_type(), **column.translate())
-                else:
-                    field = self.field_map[column.data_type](**column.translate())
-                   
->>>>>>> 1ec012b ([UP] inspectdb/__init__ class Inspect {~ def inspect })
-                fields.append("    " + field)
-            tables.append(model + "\n".join(fields))
-<<<<<<< HEAD
-        result = "\n".join(imports) + "\n\n"
-=======
-            tables.append("    class Meta:\n        table = '" + table + "'\n\n")
-<<<<<<< HEAD
->>>>>>> b51b4ea ([UP] inspectdb/__init__ class Inspect {~ def inspect +119 "class Meta ..." })
-        return result + "\n\n\n".join(tables)
-=======
-        
-        enums.extend(tables)
-        
-        return result + "\n\n\n".join(enums)
->>>>>>> 1ec012b ([UP] inspectdb/__init__ class Inspect {~ def inspect })
-=======
-            meta = f"    class Meta:\n        table = '{table}'\n"
 
-            tables.append(f"{model}\n{'\n'.join(fields)}\n\n{meta}\n")
+                field_str = trans_func(**column.translate())
+                fields_lines.append(f"    {field_str}")
 
-        result.extend(enums + tables)
-        return "\n\n\n".join(result)
+            model_name = self._table_template.format(
+                table=table.title().replace("_", "")
+            )
+
+            meta = (
+                f"    class Meta:\n"
+                f"        table = '{table}'\n"
+            )
+
+            model_block = (
+                f"{model_name}\n"
+                f"{'\n'.join(fields_lines)}\n\n"
+                f"{meta}"
+            )
+
+            result_parts.append(model_block)
+
+        header = "\n".join(dict.fromkeys(imports))  # remove duplicates, keep order
+
+        return "\n\n\n".join([header, *enums, *result_parts])
 
     async def _get_enums(self):
         raise NotImplementedError
@@ -258,7 +218,6 @@ class Inspect:
 
     async def get_enums_names(self) -> set[str]:
         raise NotImplementedError
->>>>>>> 86aa176 ([FIX] Inspectdb follow to code style)
 
     async def get_columns(self, table: str) -> list[Column]:
         raise NotImplementedError
@@ -268,10 +227,7 @@ class Inspect:
 
     @staticmethod
     def get_field_string(
-        field_class: str,
-        arguments: str = "{null}{default}{comment}",
-        is_normal_field: bool = True,
-        **kwargs,
+        field_class: str, arguments: str = "{null}{default}{comment}", **kwargs
     ) -> str:
         name: str = kwargs["name"]
         arguments += "{source_field}"
@@ -283,9 +239,7 @@ class Inspect:
         name = name.replace("@", "")
 
         field_params = arguments.format(**kwargs).strip().rstrip(",")
-        if is_normal_field:
-            field_class = "fields." + field_class
-        return f"{name} = {field_class}({field_params})"
+        return f"{name} = fields.{field_class}({field_params})"
 
     @classmethod
     def decimal_field(cls, **kwargs) -> str:
